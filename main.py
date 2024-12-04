@@ -12,37 +12,35 @@ def evaluate_performance(cbr, test_set):
 
     for idx, row in test_set.iterrows():
         query = row.to_dict()
-        true_label = query.pop('target')
+        true_label = query.pop("target")
         result = cbr.retrieve(query)
         predicted_case = result.ranking[0]
-        predicted_label = result.casebase[predicted_case]['target']
+        predicted_label = result.casebase[predicted_case]["target"]
 
         y_true.append(true_label)
         y_pred.append(predicted_label)
 
     accuracy = accuracy_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred, average='weighted')
-    recall = recall_score(y_true, y_pred, average='weighted')
-    f1 = f1_score(y_true, y_pred, average='weighted')
+    precision = precision_score(y_true, y_pred, average="weighted")
+    recall = recall_score(y_true, y_pred, average="weighted")
+    f1 = f1_score(y_true, y_pred, average="weighted")
 
-    print(f'Accuracy: {accuracy}')
-    print(f'Precision: {precision}')
-    print(f'Recall: {recall}')
-    print(f'F1 Score: {f1}')
+    print(f"Accuracy: {accuracy}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"F1 Score: {f1}")
 
 
 def main():
     iris = load_iris()
     iris_data = pd.DataFrame(iris.data, columns=iris.feature_names)
-    iris_data['target'] = iris.target
+    iris_data["target"] = iris.target
 
     train_set, test_set = train_test_split(iris_data, test_size=0.2, random_state=42)
 
     print(train_set.head())
 
-    case_base = {
-        idx: row.to_dict() for idx, row in train_set.iterrows()
-    }
+    case_base = {idx: row.to_dict() for idx, row in train_set.iterrows()}
 
     config = {
         "sepal length (cm)": "numeric",
@@ -51,7 +49,19 @@ def main():
         "petal width (cm)": "numeric",
     }
 
-    cbr = CBR(case_base, config)
+    ga_config = {
+        "generations": 10,
+        "metric": "accuracy",
+        "population_config": {
+            "population_size": 50,
+            "mutation_rate": 0.3,
+            "mutate_individually": True,
+            "k_elitism": 5,
+            "tournament_size": 10,
+        },
+    }
+
+    cbr = CBR(case_base, config, use_ga_optimizer=True, ga_config=ga_config)
 
     # query = {
     #     "sepal length (cm)": 5.1,

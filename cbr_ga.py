@@ -3,18 +3,20 @@ from copy import deepcopy
 
 
 class Creature:
-    def __init__(self, mutation_rate=0.3, mutate_individually=False, chromosome=None):
+    def __init__(
+        self, features, mutation_rate=0.3, mutate_individually=False, chromosome=None
+    ):
         if chromosome:
             self.chromosome = chromosome
         else:
-            self.chromosome = Chromosome()
+            self.chromosome = Chromosome(features=features, random_initialization=True)
 
         self.mutation_rate = mutation_rate
         self.mutate_individually = mutate_individually
         self.fitness = 0
 
     def __str__(self):
-        return f"Chromosome: {self.chromosome}, Fitness: {self.fitness}"
+        return f"Chromosome: {self.chromosome}, Fitness: {self.fitness:0.3f}"
 
     def mutate(self):
         self.chromosome.mutate(self.mutation_rate, self.mutate_individually)
@@ -22,68 +24,78 @@ class Creature:
     def calculate_fitness(self, goal):
         self.fitness = sum([gene.value for gene in self.chromosome.genes]) / goal
 
+    def get_genes(self):
+        genes_dict = {}
+        for gene in self.chromosome.genes:
+            genes_dict[gene] = self.chromosome.genes[gene].value
+
+        return genes_dict
+
 
 class Gene:
     def __init__(self, value):
         self.value = value
 
     def __str__(self):
-        return f"Value: {self.value}"
+        return f"Value: {self.value:.3f}"
 
     def mutate(self):
         self.value = np.random.random()
 
 
 class Chromosome:
-    def __init__(self, random_initialization=True):
-        self.genes = []
-        n_genes = 10
+    def __init__(self, features, random_initialization=True, start_gene_value=1):
+        self.genes = {}
 
-        for i in range(n_genes):
+        for feature in features:
             if random_initialization:
-                self.genes.append(Gene(np.random.random()))
+                self.genes[feature] = Gene(np.random.random())
             else:
-                self.genes.append(Gene(0))
+                self.genes[feature] = Gene(start_gene_value)
 
     def mutate(self, mutation_rate, individually=False):
         if individually:
             for gene in self.genes:
                 if np.random.random() < mutation_rate:
-                    gene.mutate()
+                    self.genes[gene].mutate()
         else:
             if np.random.random() < mutation_rate:
                 for gene in self.genes:
-                    gene.mutate()
+                    self.genes[gene].mutate()
 
     def __str__(self):
-        return f"Genes: {[gene.value for gene in self.genes]}"
+        return f"Genes: {[(gene, str(self.genes[gene])) for gene in self.genes]}"
 
 
 class Population:
     def __init__(
         self,
+        features,
         population_size=10,
         mutation_rate=0.3,
         mutate_individually=False,
         k_elitism=0,
+        tournament_size=5,
     ):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.mutate_individually = mutate_individually
         self.k_elitism = k_elitism
+        self.tornament_size = tournament_size
 
         self.population = [
             Creature(
-                mutation_rate=mutation_rate, mutate_individually=mutate_individually
+                features=features,
+                mutation_rate=mutation_rate,
+                mutate_individually=mutate_individually,
             )
             for i in range(population_size)
         ]
 
-    def next_generation(self, goal):
-        new_population = []
+        self.features = features
 
-        for creature in self.population:
-            creature.calculate_fitness(goal)
+    def next_generation(self):
+        new_population = []
 
         self.population = sorted(self.population, key=lambda x: x.fitness, reverse=True)
 
@@ -91,12 +103,13 @@ class Population:
             new_population.append(deepcopy(self.population[i]))
 
         for i in range(self.population_size - self.k_elitism):
-            parent1 = self.tournament_selection()
-            parent2 = self.tournament_selection()
+            parent1 = self.tournament_selection(k=self.tornament_size)
+            parent2 = self.tournament_selection(k=self.tornament_size)
 
             chromosome = self.k_point_crossover(parent1, parent2)
 
             new_creature = Creature(
+                features=self.features,
                 chromosome=chromosome,
                 mutation_rate=self.mutation_rate,
                 mutate_individually=self.mutate_individually,
@@ -110,21 +123,21 @@ class Population:
     def k_point_crossover(self, parent1, parent2):
         k = np.random.randint(1, len(parent1.chromosome.genes))
 
-        chromosome = Chromosome(random_initialization=False)
+        chromosome = Chromosome(features=self.features, random_initialization=False)
+        keys = list(parent1.chromosome.genes.keys())
 
         for i in range(k):
-            chromosome.genes[i] = deepcopy(parent1.chromosome.genes[i])
+            chromosome.genes[keys[i]] = deepcopy(parent1.chromosome.genes[keys[i]])
 
         for i in range(k, len(parent2.chromosome.genes)):
-            chromosome.genes[i] = deepcopy(parent2.chromosome.genes[i])
+            chromosome.genes[keys[i]] = deepcopy(parent2.chromosome.genes[keys[i]])
 
         return chromosome
 
-    def calculate_population_fitness(self, goal):
+    def get_population_fitness(self):
         fitness = 0
 
         for creature in self.population:
-            creature.calculate_fitness(goal)
             fitness += creature.fitness
 
         return fitness / len(self.population)
@@ -137,7 +150,7 @@ class Population:
 
         return text
 
-    def tournament_selection(self, k=10):
+    def tournament_selection(self, k=2):
         tournament = np.random.choice(self.population, k, replace=False)
         tournament = sorted(tournament, key=lambda x: x.fitness, reverse=True)
 
@@ -153,12 +166,12 @@ def main():
     population = Population(
         population_size, mutation_rate=0.05, mutate_individually=True, k_elitism=15
     )
-    print(population.calculate_population_fitness(goal))
+    print(population.get_population_fitness(goal))
 
     for i in range(generations):
         print(f"Generation {i}")
         population.next_generation(goal)
-        print(population.calculate_population_fitness(goal))
+        print(population.get_population_fitness(goal))
         print("\n")
 
 
