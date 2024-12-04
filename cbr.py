@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from Levenshtein import distance as levenshtein_distance
 from cbrkit import sim, retrieval
 
@@ -59,12 +61,22 @@ class CBR:
 
     
     def __build_retriever(self, global_similarity):
-        return retrieval.build(global_similarity, limit=1)
+        return retrieval.build(global_similarity, limit=5)
 
 
     def retrieve(self, query):
         return retrieval.apply(self.case_base, query, self.retriever)
     
 
-    def print(results):
-        pass
+    def print(self, results):
+        print('Similarities:')
+        pprint(results.similarities)
+        print()
+
+        print('Ranking:')
+        pprint(results.ranking)
+        print()
+
+        print('Casebase:')
+        pprint(results.casebase)
+        print()
