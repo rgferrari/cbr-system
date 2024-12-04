@@ -56,7 +56,7 @@ class CBR:
         )
 
         for i in range(ga_config["generations"] + 1):
-            print(f"\nPopulation {i + 1}")
+            print(f"\nGeneration {i}")
 
             for creature in population.population:
                 self.pooling_weights = creature.get_genes()

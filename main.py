@@ -50,14 +50,14 @@ def main():
     }
 
     ga_config = {
-        "generations": 10,
+        "generations": 15,
         "metric": "accuracy",
         "population_config": {
-            "population_size": 50,
-            "mutation_rate": 0.3,
+            "population_size": 70,
+            "mutation_rate": 0.4,
             "mutate_individually": True,
-            "k_elitism": 5,
-            "tournament_size": 10,
+            "k_elitism": 10,
+            "tournament_size": 15,
         },
     }
 
@@ -74,6 +74,7 @@ def main():
 
     # cbr.print(result)
 
+    print("\n")
     evaluate_performance(cbr, test_set)
 
 
