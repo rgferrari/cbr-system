@@ -24,7 +24,7 @@ def evaluate_performance(cbr, test_set):
     recall = recall_score(y_true, y_pred, average="weighted")
     f1 = f1_score(y_true, y_pred, average="weighted")
 
-    print('\nEvaluation:')
+    print("\nEvaluation:")
     print(f"Accuracy: {accuracy}")
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
@@ -32,29 +32,43 @@ def evaluate_performance(cbr, test_set):
 
 
 def main():
-    train_set, test_set, config, pooling_weights = heart_disease()
+    train_set, validation_set, test_set, config, pooling_weights = heart_disease(
+        validation=True
+    )
 
     case_base = {idx: row.to_dict() for idx, row in train_set.iterrows()}
 
+    validation_case_base = {
+        idx: row.to_dict() for idx, row in validation_set.iterrows()
+    }
+
     ga_config = {
-        "generations": 10,
+        "generations": 5,
         "metric": "accuracy",
         "population_config": {
             "population_size": 70,
-            "mutation_rate": 1,
+            "mutation_rate": 0.3,
             "mutate_individually": True,
-            "k_elitism": 10,
-            "tournament_size": 15,
+            "k_elitism": 15,
+            "tournament_size": 20,
         },
     }
 
-    cbr = CBR(case_base, 
-              config, 
-              use_ga_optimizer=False, 
-              ga_config=ga_config,
-              pooling_weights=pooling_weights)
+    cbr = CBR(
+        case_base=case_base,
+        validation_case_base=validation_case_base,
+        k_cases=5,
+        config=config,
+        use_ga_optimizer=True,
+        ga_config=ga_config,
+        pooling_weights=None,
+    )
 
     evaluate_performance(cbr, test_set)
+
+    print("\n")
+    print(cbr.pooling_weights)
+
 
 if __name__ == "__main__":
     main()
