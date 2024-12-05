@@ -6,15 +6,20 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from cbrkit import sim, retrieval
 
 from cbr_ga import Population
+import numpy as np
 
 
 class CBR:
-    def __init__(self, 
-                 case_base, 
-                 config, 
-                 use_ga_optimizer=False, 
-                 ga_config=None,
-                 pooling_weights=None):
+    def __init__(
+        self,
+        case_base,
+        config,
+        k_cases=5,
+        validation_case_base=None,
+        use_ga_optimizer=False,
+        ga_config=None,
+        pooling_weights=None,
+    ):
         self.similarity_dict = {
             "numeric": self.__numeric_similarity,
             "categorical": self.__categorical_similarity,
@@ -22,6 +27,9 @@ class CBR:
         }
 
         self.case_base = case_base
+        self.validation_case_base = validation_case_base
+
+        self.k_cases = k_cases
 
         self.pooling_weights = pooling_weights
         if pooling_weights is None:
@@ -74,13 +82,23 @@ class CBR:
 
                     y_pred = []
                     y_true = []
-                    x = self.case_base.copy()
+
+                    if self.validation_case_base is not None:
+                        x = self.validation_case_base
+                    else:
+                        x = self.case_base
 
                     for query in x.values():
                         true_label = query["target"]
                         result = self.retrieve(query)
-                        predicted_case = result.ranking[1]
-                        predicted_label = result.casebase[predicted_case]["target"]
+
+                        similar_cases = result.ranking[: self.k_cases]
+                        labels = [
+                            result.casebase[case]["target"] for case in similar_cases
+                        ]
+
+                        values, counts = np.unique(labels, return_counts=True)
+                        predicted_label = values[np.argmax(counts)]
 
                         y_true.append(true_label)
                         y_pred.append(predicted_label)
@@ -92,7 +110,9 @@ class CBR:
                             y_true, y_pred, average="weighted"
                         )
                     elif ga_config["metric"] == "recall":
-                        creature.fitness = recall_score(y_true, y_pred, average="weighted")
+                        creature.fitness = recall_score(
+                            y_true, y_pred, average="weighted"
+                        )
                     elif ga_config["metric"] == "f1":
                         creature.fitness = f1_score(y_true, y_pred, average="weighted")
 
