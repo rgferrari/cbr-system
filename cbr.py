@@ -1,13 +1,20 @@
 from pprint import pprint
 
+from tqdm import tqdm
 from Levenshtein import distance as levenshtein_distance
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from cbrkit import sim, retrieval
+
 from cbr_ga import Population
 
 
 class CBR:
-    def __init__(self, case_base, config, use_ga_optimizer=False, ga_config=None):
+    def __init__(self, 
+                 case_base, 
+                 config, 
+                 use_ga_optimizer=False, 
+                 ga_config=None,
+                 pooling_weights=None):
         self.similarity_dict = {
             "numeric": self.__numeric_similarity,
             "categorical": self.__categorical_similarity,
@@ -16,9 +23,9 @@ class CBR:
 
         self.case_base = case_base
 
-        self.pooling_weights = {}
-        for feature in config:
-            self.pooling_weights[feature] = 1.0
+        self.pooling_weights = pooling_weights
+        if pooling_weights is None:
+            self.pooling_weights = {feature: 1.0 for feature in config}
 
         global_similarity = self.__build_similarity(config)
         self.retriever = self.__build_retriever(global_similarity)
@@ -58,37 +65,38 @@ class CBR:
         for i in range(ga_config["generations"] + 1):
             print(f"\nGeneration {i}")
 
-            for creature in population.population:
-                self.pooling_weights = creature.get_genes()
+            with tqdm(population.population) as pbar:
+                for creature in pbar:
+                    self.pooling_weights = creature.get_genes()
 
-                global_similarity = self.__build_similarity(config)
-                self.retriever = self.__build_retriever(global_similarity)
+                    global_similarity = self.__build_similarity(config)
+                    self.retriever = self.__build_retriever(global_similarity)
 
-                y_pred = []
-                y_true = []
-                x = self.case_base.copy()
+                    y_pred = []
+                    y_true = []
+                    x = self.case_base.copy()
 
-                for query in x.values():
-                    true_label = query["target"]
-                    result = self.retrieve(query)
-                    predicted_case = result.ranking[1]
-                    predicted_label = result.casebase[predicted_case]["target"]
+                    for query in x.values():
+                        true_label = query["target"]
+                        result = self.retrieve(query)
+                        predicted_case = result.ranking[1]
+                        predicted_label = result.casebase[predicted_case]["target"]
 
-                    y_true.append(true_label)
-                    y_pred.append(predicted_label)
+                        y_true.append(true_label)
+                        y_pred.append(predicted_label)
 
-                if ga_config["metric"] == "accuracy":
-                    creature.fitness = accuracy_score(y_true, y_pred)
-                elif ga_config["metric"] == "precision":
-                    creature.fitness = precision_score(
-                        y_true, y_pred, average="weighted"
-                    )
-                elif ga_config["metric"] == "recall":
-                    creature.fitness = recall_score(y_true, y_pred, average="weighted")
-                elif ga_config["metric"] == "f1":
-                    creature.fitness = f1_score(y_true, y_pred, average="weighted")
+                    if ga_config["metric"] == "accuracy":
+                        creature.fitness = accuracy_score(y_true, y_pred)
+                    elif ga_config["metric"] == "precision":
+                        creature.fitness = precision_score(
+                            y_true, y_pred, average="weighted"
+                        )
+                    elif ga_config["metric"] == "recall":
+                        creature.fitness = recall_score(y_true, y_pred, average="weighted")
+                    elif ga_config["metric"] == "f1":
+                        creature.fitness = f1_score(y_true, y_pred, average="weighted")
 
-                # print(creature)
+                    pbar.set_postfix(fitness=population.get_population_fitness())
 
             print(f"Population Fitness: {population.get_population_fitness()}")
 

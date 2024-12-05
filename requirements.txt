@@ -1,3 +1,5 @@
+tqdm
 cbrkit
+ucimlrepo
 scikit-learn
 python-Levenshtein
