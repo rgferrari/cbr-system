@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from cbr import CBR
-from dataset import iris
+from dataset import heart_disease
 
 
 def evaluate_performance(cbr, test_set):
@@ -32,7 +32,7 @@ def evaluate_performance(cbr, test_set):
 
 
 def main():
-    train_set, test_set, config, pooling_weights = iris()
+    train_set, test_set, config, pooling_weights = heart_disease()
 
     case_base = {idx: row.to_dict() for idx, row in train_set.iterrows()}
 
@@ -52,7 +52,7 @@ def main():
               config, 
               use_ga_optimizer=False, 
               ga_config=ga_config,
-              pooling_weights=None)
+              pooling_weights=pooling_weights)
 
     evaluate_performance(cbr, test_set)
 
