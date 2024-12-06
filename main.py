@@ -4,6 +4,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from cbr import CBR
 from dataset import heart_disease
 import json
+import numpy as np
 
 
 def evaluate_performance(cbr, test_set, runs_json=None, run_name=None):
@@ -14,8 +15,11 @@ def evaluate_performance(cbr, test_set, runs_json=None, run_name=None):
         query = row.to_dict()
         true_label = query.pop("target")
         result = cbr.retrieve(query)
-        predicted_case = result.ranking[0]
-        predicted_label = result.casebase[predicted_case]["target"]
+        similar_cases = result.ranking[:5]
+        labels = [result.casebase[case]["target"] for case in similar_cases]
+
+        values, counts = np.unique(labels, return_counts=True)
+        predicted_label = values[np.argmax(counts)]
 
         y_true.append(true_label)
         y_pred.append(predicted_label)
@@ -52,7 +56,7 @@ def main():
     run_name = ""
     description = ""
     stratified = True
-    use_ga_optimizer = False
+    use_ga_optimizer = True
 
     runs_json[run_name] = {}
 
@@ -85,7 +89,7 @@ def main():
         config=config,
         use_ga_optimizer=use_ga_optimizer,
         ga_config=ga_config,
-        pooling_weights=None,
+        pooling_weights=pooling_weights,
         run_dict=runs_json[run_name],
     )
 
