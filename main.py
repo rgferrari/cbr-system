@@ -3,9 +3,10 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 from cbr import CBR
 from dataset import heart_disease
+import json
 
 
-def evaluate_performance(cbr, test_set):
+def evaluate_performance(cbr, test_set, runs_json=None, run_name=None):
     y_true = []
     y_pred = []
 
@@ -30,10 +31,33 @@ def evaluate_performance(cbr, test_set):
     print(f"Recall: {recall}")
     print(f"F1 Score: {f1}")
 
+    if runs_json is not None and run_name is not None:
+        runs_json[run_name].update(
+            {
+                "accuracy": accuracy,
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+            }
+        )
+
+        runs_json[run_name]["pooling_weights"] = cbr.pooling_weights
+
+        with open("runs.json", "w") as f:
+            json.dump(runs_json, f)
+
 
 def main():
+    runs_json = json.load(open("runs.json", "r"))
+    run_name = ""
+    description = ""
+    stratified = True
+    use_ga_optimizer = False
+
+    runs_json[run_name] = {}
+
     train_set, validation_set, test_set, config, pooling_weights = heart_disease(
-        validation=True
+        validation=True, stratify=stratified
     )
 
     case_base = {idx: row.to_dict() for idx, row in train_set.iterrows()}
@@ -43,7 +67,7 @@ def main():
     }
 
     ga_config = {
-        "generations": 5,
+        "generations": 10,
         "metric": "accuracy",
         "population_config": {
             "population_size": 70,
@@ -59,12 +83,20 @@ def main():
         validation_case_base=validation_case_base,
         k_cases=5,
         config=config,
-        use_ga_optimizer=True,
+        use_ga_optimizer=use_ga_optimizer,
         ga_config=ga_config,
         pooling_weights=None,
+        run_dict=runs_json[run_name],
     )
 
-    evaluate_performance(cbr, test_set)
+    runs_json[run_name]["description"] = description
+    runs_json[run_name]["stratified"] = stratified
+    runs_json[run_name]["use_ga_optimizer"] = use_ga_optimizer
+
+    if use_ga_optimizer:
+        runs_json[run_name]["ga_config"] = ga_config
+
+    evaluate_performance(cbr, test_set, runs_json, run_name)
 
     print("\n")
     print(cbr.pooling_weights)

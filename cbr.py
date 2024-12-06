@@ -19,6 +19,7 @@ class CBR:
         use_ga_optimizer=False,
         ga_config=None,
         pooling_weights=None,
+        run_dict=None,
     ):
         self.similarity_dict = {
             "numeric": self.__numeric_similarity,
@@ -39,7 +40,12 @@ class CBR:
         self.retriever = self.__build_retriever(global_similarity)
 
         if use_ga_optimizer:
-            self.__optimize_sim_weights(config, ga_config=ga_config)
+            self.__optimize_sim_weights(
+                config,
+                ga_config=ga_config,
+                starting_weights=pooling_weights,
+                run_dict=run_dict,
+            )
 
     def __numeric_similarity(self, x: int | float, y: int | float):
         if x == y:
@@ -61,14 +67,20 @@ class CBR:
             return 1.0
         return 1 - levenshtein_distance(x, y) / max_len
 
-    def __optimize_sim_weights(self, config, ga_config):
+    def __optimize_sim_weights(
+        self, config, ga_config, starting_weights=None, run_dict=None
+    ):
 
         population_config = ga_config.get("population_config", {})
 
         population = Population(
             features=self.pooling_weights.keys(),
+            initial_chromosome_values=starting_weights,
             **population_config,
         )
+
+        if run_dict is not None:
+            run_dict["ga_optimization_generations"] = {}
 
         for i in range(ga_config["generations"] + 1):
             print(f"\nGeneration {i}")
@@ -119,6 +131,15 @@ class CBR:
                     pbar.set_postfix(fitness=population.get_population_fitness())
 
             print(f"Population Fitness: {population.get_population_fitness()}")
+
+            if run_dict is not None:
+                best_creature = max(population.population, key=lambda x: x.fitness)
+
+                run_dict["ga_optimization_generations"][str(i)] = {
+                    "population_fitness": population.get_population_fitness(),
+                    "best_pooling_weights": best_creature.get_genes(),
+                    "best_creature_fitness": best_creature.fitness,
+                }
 
             if i == ga_config["generations"]:
                 best_creature = max(population.population, key=lambda x: x.fitness)

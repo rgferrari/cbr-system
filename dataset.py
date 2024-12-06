@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 def heart_disease(
-    validation=True,
+    validation=True, stratify=False
 ) -> (
     tuple[pd.DataFrame, pd.DataFrame, dict, dict]
     | tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict]
@@ -26,23 +26,31 @@ def heart_disease(
     explained_variance_ratios = pca.explained_variance_ratio_
     min_ratio = explained_variance_ratios.min()
     max_ratio = explained_variance_ratios.max()
-    normalized_ratios = 0.5 + (explained_variance_ratios - min_ratio) / (max_ratio - min_ratio) * 0.5
+    normalized_ratios = (
+        0.5 + (explained_variance_ratios - min_ratio) / (max_ratio - min_ratio) * 0.5
+    )
 
     pooling_weights = {
         feature: float(ratio)
-        for feature, ratio in zip(
-            df.drop("target", axis=1).columns, normalized_ratios
-        )
+        for feature, ratio in zip(df.drop("target", axis=1).columns, normalized_ratios)
     }
 
-    train_set, test_set = train_test_split(
-        df, test_size=0.2, random_state=42, stratify=df["target"]
-    )
+    if stratify is True:
+        train_set, test_set = train_test_split(
+            df, test_size=0.2, random_state=42, stratify=df["target"]
+        )
+    else:
+        train_set, test_set = train_test_split(df, test_size=0.2, random_state=42)
 
     if validation is True:
-        train_set, validation_set = train_test_split(
-            train_set, test_size=0.2, random_state=42, stratify=train_set["target"]
-        )
+        if stratify is True:
+            train_set, validation_set = train_test_split(
+                train_set, test_size=0.2, random_state=42, stratify=train_set["target"]
+            )
+        else:
+            train_set, validation_set = train_test_split(
+                train_set, test_size=0.2, random_state=42
+            )
 
     print("Heart Disease Dataset")
     print("=====================\n")
@@ -84,7 +92,9 @@ def iris(
     explained_variance_ratios = pca.explained_variance_ratio_
     min_ratio = explained_variance_ratios.min()
     max_ratio = explained_variance_ratios.max()
-    normalized_ratios = 0.5 + (explained_variance_ratios - min_ratio) / (max_ratio - min_ratio) * 0.5
+    normalized_ratios = (
+        0.5 + (explained_variance_ratios - min_ratio) / (max_ratio - min_ratio) * 0.5
+    )
 
     pooling_weights = {
         feature: float(ratio)

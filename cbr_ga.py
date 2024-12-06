@@ -4,12 +4,26 @@ from copy import deepcopy
 
 class Creature:
     def __init__(
-        self, features, mutation_rate=0.3, mutate_individually=False, chromosome=None
+        self,
+        features,
+        mutation_rate=0.3,
+        mutate_individually=False,
+        chromosome=None,
+        initial_chromosome_values=None,
     ):
         if chromosome:
             self.chromosome = chromosome
         else:
-            self.chromosome = Chromosome(features=features, random_initialization=True)
+            if initial_chromosome_values:
+                self.chromosome = Chromosome(
+                    features=features,
+                    random_initialization=False,
+                    start_gene_values=initial_chromosome_values,
+                )
+            else:
+                self.chromosome = Chromosome(
+                    features=features, random_initialization=True
+                )
 
         self.mutation_rate = mutation_rate
         self.mutate_individually = mutate_individually
@@ -44,14 +58,20 @@ class Gene:
 
 
 class Chromosome:
-    def __init__(self, features, random_initialization=True, start_gene_value=1):
+    def __init__(self, features, random_initialization=True, start_gene_values=None):
         self.genes = {}
 
         for feature in features:
             if random_initialization:
                 self.genes[feature] = Gene(np.random.random())
             else:
-                self.genes[feature] = Gene(start_gene_value)
+                if start_gene_values:
+                    if isinstance(start_gene_values, dict):
+                        self.genes[feature] = Gene(start_gene_values[feature])
+                    elif isinstance(start_gene_values, float) or isinstance(
+                        start_gene_values, int
+                    ):
+                        self.genes[feature] = Gene(start_gene_values)
 
     def mutate(self, mutation_rate, individually=False):
         if individually:
@@ -76,6 +96,7 @@ class Population:
         mutate_individually=False,
         k_elitism=0,
         tournament_size=5,
+        initial_chromosome_values=None,
     ):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
@@ -88,6 +109,7 @@ class Population:
                 features=features,
                 mutation_rate=mutation_rate,
                 mutate_individually=mutate_individually,
+                initial_chromosome_values=initial_chromosome_values,
             )
             for i in range(population_size)
         ]
